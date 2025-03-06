@@ -3,26 +3,29 @@ import streamlit as st  # Import Streamlit for UI components
 from urllib.parse import urlparse  # Import urlparse to extract filename from URL
 import requests  # Import requests to download files from URLs
 
-def rename_file(url, prefix):
-    try:
-        response = requests.get(url, stream=True)
-        if response.status_code == 200:
-            parsed_url = urlparse(url)  # Parse the URL
-            original_filename = os.path.basename(parsed_url.path)  # Extract filename from URL
-            file_extension = os.path.splitext(original_filename)[1]  # Get file extension
-            new_name = f"{prefix}{file_extension}"  # Create new filename with prefix
-            
-            with open(new_name, "wb") as f:
-                f.write(response.content)  # Save the file with the new name
-            
-            return new_name  # Return renamed file name
-        else:
-            return None
-    except Exception as e:
-        return None
+def rename_files(urls, prefix):
+    renamed_files = []  # List to store renamed file names
+    for index, url in enumerate(urls, start=1):
+        try:
+            response = requests.get(url, stream=True)
+            if response.status_code == 200:
+                parsed_url = urlparse(url)  # Parse the URL
+                original_filename = os.path.basename(parsed_url.path)  # Extract filename from URL
+                file_extension = os.path.splitext(original_filename)[1]  # Get file extension
+                new_name = f"{prefix}{index}{file_extension}"  # Create new filename with prefix and index
+                
+                with open(new_name, "wb") as f:
+                    f.write(response.content)  # Save the file with the new name
+                
+                renamed_files.append(new_name)  # Add renamed file to the list
+            else:
+                renamed_files.append(None)  # Append None for failed downloads
+        except Exception as e:
+            renamed_files.append(None)  # Append None if an error occurs
+    return renamed_files  # Return list of renamed files
 
 # Streamlit UI
-st.title("File Renamer from URL")  # Set title for the Streamlit app
+st.title("Bulk File Renamer from URLs")  # Set title for the Streamlit app
 
 # Custom CSS for black background
 st.markdown(
@@ -37,21 +40,30 @@ st.markdown(
     unsafe_allow_html=True  # Allow unsafe HTML for custom styling
 )
 
-# URL input
-url = st.text_input("Enter file URL:")  # Input field for file URL
-prefix = st.text_input("Enter prefix for new filename:", value="file_")  # Text input for filename prefix
+# URLs input
+urls = st.text_area("Enter file URLs (one per line):")  # Input field for multiple URLs
+prefix = st.text_input("Enter prefix for new filenames:", value="file_")  # Text input for filename prefix
 
-if st.button("Download and Rename File"):  # Button to trigger renaming
-    if url and prefix:
-        renamed_file = rename_file(url, prefix)  # Call rename function
-        if renamed_file:
-            st.success("File renamed successfully! Click below to download.")
-            with open(renamed_file, "rb") as f:
-                st.download_button(label=f"Download {renamed_file}", data=f, file_name=renamed_file)  # Provide download link
+if st.button("Download and Rename Files"):  # Button to trigger renaming
+    url_list = [url.strip() for url in urls.split("\n") if url.strip()]  # Convert input into a list of URLs
+    if url_list and prefix:
+        renamed_files = rename_files(url_list, prefix)  # Call rename function
+        if any(renamed_files):
+            st.success("Files renamed successfully! Click below to download.")
+            for file in renamed_files:
+                if file:
+                    with open(file, "rb") as f:
+                        st.download_button(label=f"Download {file}", data=f, file_name=file)  # Provide download link
+                else:
+                    st.error("One or more files could not be downloaded.")
         else:
-            st.error("Failed to download or rename the file. Check the URL.")
+            st.error("Failed to download or rename any files. Check the URLs.")
     else:
-        st.error("Please enter a valid URL and a prefix.")  # Show error message if inputs are missing
+        st.error("Please enter valid URLs and a prefix.")  # Show error message if inputs are missing
+
+
+
+# Show error message if inputs are missing
 # import os  # Import the os module to interact with the file system
 # import streamlit as st  # Import Streamlit for UI components
 # from pathlib import Path  # Import Path from pathlib for handling file paths
