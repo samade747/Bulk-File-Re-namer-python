@@ -1,13 +1,15 @@
 import os  # Import the os module to interact with the file system
 import streamlit as st  # Import Streamlit for UI components
-from pathlib import Path  # Import Path from pathlib for handling file paths
+from urllib.parse import urlparse  # Import urlparse to extract filename from URL
 import requests  # Import requests to download files from URLs
 
 def rename_file(url, prefix):
     try:
         response = requests.get(url, stream=True)
         if response.status_code == 200:
-            file_extension = Path(url).suffix  # Get file extension from URL
+            parsed_url = urlparse(url)  # Parse the URL
+            original_filename = os.path.basename(parsed_url.path)  # Extract filename from URL
+            file_extension = os.path.splitext(original_filename)[1]  # Get file extension
             new_name = f"{prefix}{file_extension}"  # Create new filename with prefix
             
             with open(new_name, "wb") as f:
@@ -50,8 +52,6 @@ if st.button("Download and Rename File"):  # Button to trigger renaming
             st.error("Failed to download or rename the file. Check the URL.")
     else:
         st.error("Please enter a valid URL and a prefix.")  # Show error message if inputs are missing
-
-
 # import os  # Import the os module to interact with the file system
 # import streamlit as st  # Import Streamlit for UI components
 # from pathlib import Path  # Import Path from pathlib for handling file paths
